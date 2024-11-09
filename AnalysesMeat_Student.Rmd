@@ -1,0 +1,457 @@
+---
+title: "Meat"
+author: "SylvieB"
+date: "14/10/2024"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+#Libraries
+
+```{r Libraries, message=F, warning=F, include=FALSE}
+
+
+library(tidyverse)
+library(extrafont)
+library(hrbrthemes)
+library(ggthemes)
+library(gridExtra)
+library(lme4)
+library(lmerTest)
+library(stargazer)
+library(summarytools)
+library(PerformanceAnalytics)
+library(ggplot2)
+library(effects)
+library(dplyr)
+
+
+```
+
+
+
+## Load r data file / no need to write the access to the file :)
+
+
+```{r}
+
+load("Meat.rdata")
+Meat <- read.csv("C:/Users/annag/Documents/Gabby/University/Gap Year/DATA SCIENCE MASTERS/U3 - New Trends in Marketing/Meat.csv")
+
+```
+
+
+
+## Summary Stats
+```{r}
+str(Meat)
+glimpse(Meat)
+summary(Meat)
+View(Meat)
+#must have a capital letter
+# Option 1: Assign it to a variable and print
+selected_data <- select(Meat, Motivation)
+print(selected_data)
+str(selected_data)
+View(selected_data)
+# Option 2: Print it directly
+select(Meat, Motivation)
+
+select(Meat, Motivation)
+colnames(Meat)
+
+summary(Meat$Gender)
+summary(Meat$Age)
+summary(Meat$Stimuli)
+
+
+summary(Meat$Liking)
+
+
+```
+
+
+## Correlations
+```{r}
+
+#Correlations
+
+MeatCor <- subset(Meat, select=c("Age", "Hunger", "Religion", "Political", "NegativeEmotions", "PositiveEmotions", "BeliefsMeat", "Openness", "Environ", "CloseCircle", "FrequencyMeat", "Attitude", "Purchase", "Liking", "IntentionReduce" ))
+chart.Correlation(MeatCor[1:15])
+
+RegressBeliefsonDisgust <- subset(Meat, select=c("BeliefsMeat", "Disgust"))
+View(RegressBeliefsonDisgust) #you can view the dataframe you created with just thoe two variables
+chart.Correlation(RegressBeliefsonDisgust) #shows the correlation coefficient
+library(ggplot2)
+
+# Assuming `BeliefsMeat` is a categorical variable
+ggplot(Meat, aes(x = as.factor(BeliefsMeat))) +
+  geom_bar() +
+  labs(x = "Beliefs Meat", y = "Count", title = "Distribution of Beliefs Meat")
+
+ggplot(Meat, aes(x = as.factor(BeliefsMeat), fill = as.factor(Disgust))) +
+  geom_bar(position = "dodge") +
+  labs(x = "Beliefs Meat", y = "Count", fill = "Disgust Level", title = "Distribution of Beliefs Meat by Disgust") 
+#what this category would show is how depending on your belief category how much digust you feel on count. when beliefs meat is high it indicates that people believe meat is important to them. This is the antecedent to disgust as belief system is before a taste. there is not really a clear link between them which confirms the weak positive relationship. This suggests that when belief in meat importance is high there is actually a higher chance of you having a disgust response. This is intuitive as you would not want to change to a meat substitute but the relationship is weak.
+
+RegressBeliefsonDisgustREGRESSION <- lm(Disgust ~ BeliefsMeat, Meat)
+summary(RegressBeliefsonDisgustREGRESSION)
+#shows the very small positive but quite statistically significant results
+BeliefsMeat1ondisgust<- lm(Disgust ~ BeliefsMeat1_History, Meat)
+View(BeliefsMeat1ondisgust)
+summary(BeliefsMeat1ondisgust)
+#small statistically significant coefficient on Disgust considering that you think about the historical reasons
+
+predictor_vars <- c("BeliefsMeat1_History", "BeliefsMeat2_Health", "BeliefsMeat3_AllLife")
+
+for(var in predictor_vars) {
+  formula <- as.formula(paste("Disgust ~", var))
+  model <-lm(formula, data=Meat)
+  cat("\nRegression summary for:", var, "\n")
+  print(summary(model))
+  View(model)
+}
+#results show for belief1 coefficient of 0.09 which is **
+#for belief2 0.05 but not statistically significant
+#for belief3 0.069 only *
+
+#paste creates a string list of Disgust~ with the looping variable
+#as.formula then takes this and converts it into a formula object that can be used in modeling functions like lm()
+
+library(ggplot2)
+ggplot(Meat, aes(x = BeliefsMeat1_History, y = Disgust)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(Meat, aes(x=BeliefsMeat2_Health, y = Disgust)) + geom_point() +geom_smooth(method = "lm")
+
+ggplot(Meat, aes(x=BeliefsMeat3_AllLife, y = Disgust)) + geom_point() +geom_smooth(method = "lm")
+
+RegressBeliefsonSolutionFuture <- subset(Meat, select=c("BeliefsMeat", "SolutionFuture"))
+View(RegressBeliefsonSolutionFuture) #you can view the dataframe you created with just thoe two variables
+chart.Correlation(RegressBeliefsonSolutionFuture) #shows the correlation coefficient
+
+#very strong negative highly significant correlation between the belief that meat is important and the idea that substitutes are a solution for the future. This means that the more you love meat and believe it is important the LESS likely you are to see substitutes as a solution.
+
+ggplot(Meat, aes(x=BeliefsMeat, y = SolutionFuture)) + geom_point() +geom_smooth(method = "lm")
+
+
+
+for(var in predictor_vars) {
+  formula <- as.formula(paste("SolutionFuture ~", var))
+  model <-lm(formula, data=Meat)
+  cat("\nRegression summary for:", var, "\n")
+  print(summary(model))
+  View(model)
+}
+
+
+LikingOnDisgust <- lm(Liking~Disgust, data=Meat)
+summary(LikingOnDisgust)
+str(LikingOnDisgust)
+LikingOnDisgust$Liking <- as.numeric(as.character(LikingOnDisgust$Liking))
+LikingOnDisgust$Disgust <- as.numeric(as.character(LikingOnDisgust$Disgust))
+chart.Correlation(LikingOnDisgust)
+
+chart.Correlation(RegressLikingonDisgust) #shows the correlation coefficient
+
+#shows very negative relationship highly statistically significant that 
+
+DisgustonNegativeEmotions <- lm(NegativeEmotions~Disgust, data=Meat)
+View(DisgustonNegativeEmotions)
+summary(DisgustonNegativeEmotions)
+
+DisgustonPositiveEmotions <- lm(PositiveEmotions~Disgust, data=Meat)
+summary(DisgustonPositiveEmotions)
+
+
+DisgustonPurchase <- lm(Purchase~Disgust, data=Meat)
+summary(DisgustonPositiveEmotions)
+
+
+
+
+
+```
+
+
+
+
+## Subsetting files
+1 subfile for each alternative to meat when making specific analyses without ciomparing between teh different groups
+
+Cultivated    Insects    Vegetal
+```{r}
+
+
+summary(Meat$Stimuli)
+
+#Only Veggie
+Vegetal <- subset(Meat, Stimuli == "Vegetal")
+
+
+#Only Insects
+Insects <- subset(Meat, Stimuli == "Insects")
+
+#Only Cultivated
+Cultivated <- subset(Meat, Stimuli == "Cultivated")
+
+
+summary(Vegetal$Stimuli)
+summary(Insects$Stimuli)
+summary(Cultivated$Stimuli)
+
+
+```
+
+
+
+***************
+
+
+1. Beliefs & Attitudes
+
+Name variables:
+Attitude
+Liking
+IntentionReduce
+Purchase
+
+Beliefs
+SolutionFuture
+AnimalWelfare
+PreservePlanet
+
+BeliefssMeat -> believing that meat is important for our diet, that huumans had always eaten meat in the past etc... 
+
+```{r}
+
+#Descriptives
+#CTRL + SHIFT + to insert the pipe %>%
+
+Meat %>%
+  group_by(Stimuli) %>%
+  summarize(mean(Attitude), 
+            sd(Attitude))
+
+Meat %>%
+  group_by(Gender) %>%
+  summarize(mean(BeliefsMeat), 
+            sd(BeliefsMeat))
+
+
+#Regressions
+#without NonBinary
+MeatGender <- Meat[Meat$Gender %in% c("Feminine", "Masculine"), ]
+
+lm1= lm (BeliefsMeat ~ Gender, data = MeatGender)
+summary(lm1)
+
+
+
+
+#GgPlot:
+  ggplot(Meat, aes(Attitude, fill = Stimuli)) +
+  geom_density(alpha=0.5) +
+  xlab("Attitude toward the different alternatives") +
+  scale_fill_manual(values=c("darkgrey","darkcyan","DarkRed"))+
+  theme_bw()
+
+  
+  # you can also save the plot as a png file:
+  
+plot2 <-ggplot(Meat, aes(Attitude, fill = Stimuli)) +
+  geom_density(alpha=0.5) +
+  xlab("Attitude toward the different alternatives") +
+  scale_fill_manual(values=c("darkgrey","darkcyan","DarkRed"))+
+  theme_bw()
+plot2
+ggsave("plot2.png")
+
+
+
+```
+
+
+
+2. Emotions
+Disgust
+Satisfaction
+Pride
+Fun
+Shame
+Guilt
+Surprise
+Anger
+Relief
+Joy
+Fear
+Sadness
+NegativeEmotions
+PositiveEmotionsEmotions
+
+```{r}
+
+
+```
+
+
+
+```{r}
+
+
+
+#Plots
+# Negative emotions
+
+Plot1 <- ggplot(Meat, aes(Stimuli, NegativeEmotions, fill = Stimuli))+
+  geom_boxplot ()+
+  scale_color_manual(values=c("#edae49", "#00798c","DarkRed"))+
+  scale_fill_manual(values = c("#edae49", "#00798c","DarkRed"))+
+  labs(title="Negative Emotions for each alternative",x="Alternatives", y = "NegativeEmotions")+
+  theme(legend.position="none")
+Plot1
+
+
+
+
+```
+
+
+
+
+3. Social Influence
+CloseCircle
+colnames(Meat)
+
+```{r}
+
+
+```
+
+
+4. Values, Motivations & Needs
+
+```{r}
+
+#Counts
+table(Meat$Motivation, Meat$Stimuli)
+chisq.test(table(Meat$Motivation, Meat$Stimuli))
+
+#other option:create the table as an object
+table1 <- table(Meat$Motivation, Meat$Stimuli)
+table1
+chisq.test(table1)
+
+#Proportions
+with(Meat, prop.table(table(Motivation, Stimuli), margin=1))
+with(Meat, chisq.test(table(Motivation, Stimuli)))
+
+
+```
+
+
+5. Self-concept
+Environ
+
+```{r}
+
+
+
+
+```
+
+
+6. Personality
+Openness
+
+```{r}
+
+
+
+```
+
+
+7. Culture & Subcultures
+Gender 
+Religion
+Plotical
+
+```{r}
+
+
+```
+
+
+
+
+# Example Typology
+
+```{r}
+# Load required packages
+library(tidyverse) # For data manipulation
+library(cluster) # For clustering functions
+library(factoextra) # For visualizing clusters
+
+# Step 1: Subset the data with the relevant variables
+variables_of_interest <- Cultivated %>% 
+  select(Age, Gender, Religion, Political, NegativeEmotions, 
+         Openness, BeliefsMeat, Attitude)
+
+# Step 2: Prepare the data for clustering
+# Remove missing values
+variables_of_interest <- na.omit(variables_of_interest)
+
+# Check for and remove non-numeric columns for clustering purposes
+# Gender, Religion, and Political are assumed to be non-numeric and need to be excluded or transformed
+variables_scaled <- variables_of_interest %>% 
+  select(-Gender, -Religion, -Political) %>% 
+  mutate(across(where(is.numeric), scale))
+
+# Step 3 Apply k-means clustering
+set.seed(123) # Set seed for reproducibility
+# Determine the optimal number of clusters using the Elbow method
+fviz_nbclust(variables_scaled, kmeans, method = "wss")
+
+# Fit k-means with the chosen number of clusters (e.g., 3 clusters)
+kmeans_result <- kmeans(variables_scaled, centers = 3, nstart = 25)
+
+# Add the cluster assignment to the original dataset
+variables_of_interest$Cluster <- kmeans_result$cluster
+
+# Step 4: Visualize the clusters
+fviz_cluster(kmeans_result, data = variables_scaled, geom = "point")
+
+# Optional Step: Apply hierarchical clustering
+# Step 1: Compute distance matrix
+distance_matrix <- dist(variables_scaled, method = "euclidean")
+
+# Hierarchical clustering using Ward's method
+hc_result <- hclust(distance_matrix, method = "ward.D2")
+
+# Plot the dendrogram
+plot(hc_result, labels = FALSE, main = "Dendrogram of Respondents")
+rect.hclust(hc_result, k = 3, border = "red") # Cut the dendrogram into 3 clusters
+
+# Interpret the clusters
+# You can summarize the data by cluster to understand the typology
+variables_of_interest %>% 
+  group_by(Cluster) %>% 
+  summarize(across(everything(), mean, na.rm = TRUE))
+
+```
+
+
+
+
+
+
