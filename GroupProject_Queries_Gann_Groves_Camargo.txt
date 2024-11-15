@@ -1,0 +1,542 @@
+Group Project: NO SQL
+Members: Gabriella Groves, Maria Camargo and Deborah Gann
+
+Split of Group work:
+- Gabriella: 4 Aggregation, 2 $exp and 1 Chart
+- Maria: 2 charts, 3 mix comparison / logical and 2 based on Arrays
+- Deborah: 2 charts, 3 mix comparison / logical and 2 based on Arrays
+
+Dataset: Business on Yelp
+______________________________________
+
+Python Code of converting columns into Arrays:
+
+import pandas as pd
+# Load the data into a DataFrame
+df = pd.read_json('yelp_academic_dataset_business.json', lines=True)
+
+# Convert the 'categories' column from a comma-separated string to a list
+df['categories'] = df['categories'].apply(lambda x: x.split(', ') if pd.notnull(x) else [])
+
+# Display the updated DataFrame
+print(df.head())
+
+# Save the updated DataFrame to a new JSON file
+df.to_json('updated_yelp_academic_dataset_business.json', orient='records', lines=True)
+
+______________________________________
+
+Gabriella:
+
+Insight: Provides insight into highly rated businesses in each city. Highly rated businesses is when stars are greater than 4.
+
+Business value: Identifies which cities have the most successful proportion of businesses. This would indicate local Marshallian Externalities that would attract new businesses. On the flip side would indicate areas of strong competition in case businesses wanted to move to a less competitive area.
+
+Used: Aggregation
+Query:
+
+[
+  {
+    $match:
+      /**
+       * query: The query in MQL.
+       */
+      {
+        stars: {
+          $gt: 4
+        }
+      }
+  },
+  {
+    $project:
+      /**
+       * specifications: The fields to
+       *   include or exclude.
+       */
+      {
+        stars: 1,
+        city: 1
+      }
+  },
+  {
+    $group:
+      /**
+       * _id: The id of the group.
+       * fieldN: The first field name.
+       */
+      {
+        _id: "$city",
+        BuisinessesWithMorethan4Stars: {
+          $sum: 1
+        }
+      }
+  },
+  {
+    $sort:
+      /**
+       * Provide any number of field/order pairs.
+       */
+      {
+        BuisinessesWithMorethan4Stars: -1
+      }
+  }
+]
+
+
+
+Insight :
+Provides insight into the cities which have the most businesses accepting credit card payments.
+
+Business value: shows importance of having online payment/credit card payment in certain cities due to competitive aspect of many businesses having them. Would also indicate customer preference to pay by this method as opposed to cash.
+
+Used: Aggregation 
+
+Query:
+
+[
+  {
+    $match:
+      /**
+       * query: The query in MQL.
+       */
+      {
+        "attributes.BusinessAcceptsCreditCards": {
+          $eq: "True"
+        }
+      }
+  },
+  {
+    $project:
+      /**
+       * specifications: The fields to
+       *   include or exclude.
+       */
+      {
+        "attributes.BusinessAcceptsCreditCards": 1,
+        city: 1
+      }
+  },
+  {
+    $group:
+      /**
+       * _id: The id of the group.
+       * fieldN: The first field name.
+       */
+      {
+        _id: "$city",
+        DoBusinessesAcceptCreditCards: {
+          $sum: 1
+        }
+      }
+  },
+  {
+    $sort:
+      /**
+       * Provide any number of field/order pairs.
+       */
+      {
+        DoBusinessesAcceptCreditCards: -1
+      }
+  }
+]
+
+
+
+Insight: This insight shows the number of business by category type.
+
+Business value: The business insight for this would be that it shows which type of business category is the most popular across all cities and which is the least. This gives information about what sectors are the best/worst performing.
+
+Used: Aggregation and unwind
+
+Query:
+
+[
+  {
+    $unwind:
+      /**
+       * path: Path to the array field.
+       * includeArrayIndex: Optional name for index.
+       * preserveNullAndEmptyArrays: Optional
+       *   toggle to unwind null and empty values.
+       */
+      {
+        path: "$categories"
+      }
+  },
+  {
+    $project:
+      /**
+       * specifications: The fields to
+       *   include or exclude.
+       */
+      {
+        city: 1,
+        review_count: 1,
+        categories: 1,
+        _id: 0
+      }
+  },
+  {
+    $group:
+      /**
+       * _id: The id of the group.
+       * fieldN: The first field name.
+       */
+      {
+        _id: "$categories",
+        BusinessNumberPerCategoryType: {
+          $sum: 1
+        }
+      }
+  },
+  {
+    $sort:
+      /**
+       * Provide any number of field/order pairs.
+       */
+      {
+        BusinessNumberPerCategoryType: -1
+      }
+  }
+]
+
+
+
+Insight: This insight uses unwind to understand the breakdown of the number of businesses per city by a chosen category in this case Doctors.
+
+Business value: This allows for an understanding of where certain businesses are most concentrated by sub-sector which was not done before.
+
+Used:Aggregation and unwind
+
+Query:
+
+[
+  {
+    $unwind:
+      /**
+       * path: Path to the array field.
+       * includeArrayIndex: Optional name for index.
+       * preserveNullAndEmptyArrays: Optional
+       *   toggle to unwind null and empty values.
+       */
+      {
+        path: "$categories"
+      }
+  },
+  {
+    $match:
+      /**
+       * query: The query in MQL.
+       */
+      {
+        categories: {
+          $eq: "Doctors"
+        }
+      }
+  },
+  {
+    $project:
+      /**
+       * specifications: The fields to
+       *   include or exclude.
+       */
+      {
+        city: 1,
+        _id: 0
+      }
+  },
+  {
+    $group:
+      /**
+       * _id: The id of the group.
+       * fieldN: The first field name.
+       */
+      {
+        _id: "$city",
+        DoctorOccur: {
+          $sum: 1
+        }
+      }
+  },
+  {
+    $sort:
+      /**
+       * Provide any number of field/order pairs.
+       */
+      {
+        DoctorOccur: -1
+      }
+  }
+]
+
+
+
+Insight: This insight provides a comparison between which Restaurants that do TakeOut do not have a Delivery option.
+
+Business value : allows an understanding of which restaurant businesses do not have this delivery option either to encourage them to provide it, or to ensure that customers are aware of this before they buy.
+
+Used: $exp
+
+Query:
+
+
+[
+  {
+    $match: {
+      $and: [
+        {
+          "attributes.RestaurantsTakeOut": {
+            $exists: true,
+            $ne: null
+          }
+        },
+        {
+          "attributes.RestaurantsDelivery": {
+            $exists: true,
+            $ne: null
+          }
+        },
+        {
+          $expr: {
+            $ne: [
+              "$attributes.RestaurantsTakeOut",
+              "$attributes.RestaurantsDelivery"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    $project: {
+      city: 1,
+      "attributes.RestaurantsTakeOut": 1,
+      "attributes.RestaurantsDelivery": 1,
+      _id: 0,
+      name: 1
+    }
+  }
+]
+
+
+
+Insight: This query provides insight into what type of parking each business have. we use the expr function to output the businesses which either both have bike and car parking, or do not have either. 
+
+Business value: This query is highly informative in terms of how to reach the business. If there is both bike and car parking then customers can plan accordingly, however if there is neither bike or car parking then alternative routes should be taken to get there. Businesses should consisder parking space if they have neither option.
+
+Used: $exp
+
+Query:
+
+
+[
+  {
+    $match: {
+      $and: [
+        {
+          "attributes.BikeParking": {
+            $exists: true,
+            $ne: null
+          }
+        },
+        {
+          "attributes.BusinessParking": {
+            $exists: true,
+            $ne: null
+          }
+        },
+        {
+          $expr: {
+            $eq: [
+              "$attributes.BikeParking",
+              "$attributes.BusinessParking"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    $project:
+      /**
+       * specifications: The fields to
+       *   include or exclude.
+       */
+      {
+        city: 1,
+        _id: 0,
+        name: 1,
+        "attributes.BusinessParking": 1,
+        "attributes.BikeParking": 1
+      }
+  }
+]
+
+
+
+Chart :
+
+Chart Type: Geospatial
+Title: Businesses in NJ on Sunday
+
+Insight: Understanding which are the best businesses open on a Sunday in state of New Jersey. Gives a breakdown by color of when the businesses are open and the size of the bubble is the average star rating of the business
+
+Business Value: Helping customers find highly-rated businesses that are open on Sundays, saving time and effort. Also, allows business owners to compare to others in terms of rating and operating times
+
+______________________________________
+
+Maria:
+
+Insight: Find all the business that are not open.
+
+Business value: Identifying closed business enhance the user experience and help to better allocate resources of marketing.
+
+Used : Logical Operator
+
+Query:
+{"is_open":{"$ne":1} }
+
+
+
+Insight: Find the restaurants that are good for groups, accept reservations and are high rated (>3)
+
+Business Value: Marketing campaing focused on  good restaurants to celebrate an event.
+
+Used: Arrays and Logical Operator.
+
+Query:
+{"is_open": 1, "stars": {"$gte": 4},"categories": "Restaurants","attributes.RestaurantsGoodForGroups":"True",
+"attributes.RestaurantsReservations":"True"}
+
+
+
+Insight: Find all the cafes that allow dogs, casual attire and are open in saturday or sunday morning
+Business Value: A marketing campaing about pet friendy places to go with your Friends or Family could be done with the result of this query.
+
+Used: Arrays and Logical Operator.
+
+Query:
+
+{"is_open": 1,
+ "attributes.DogsAllowed":"True",
+"attributes.RestaurantsAttire":"'casual'",
+"$or":[{"hours.Saturday":"8:0-14:0"},{"hours.Sunday":"8:0-14:0"}], 
+"$or":[{"categories":"Coffe"},{"categories":"Coffee & Tea"},{"categories":"Cafes"},{"categories":"Breakfast & Brunch"}]
+}
+
+
+
+
+Chart: 
+Type of Chart: Barchart
+Title: 5 Stars Restaurants by City 
+Insight: Identify which are the cities with more 5 star restaurants.
+Business Value: They can be promoted as gastronomic capital to enhance turism.
+Query:
+{"is_open": 1, "stars": {"$gt": 4},"categories": "Restaurants"}
+
+
+Chart: 
+Type of Chart: Geospatial
+Title: Pet Friendly Restaurants in USA
+
+Insight: Visualize the distribution of pet-friendly restaurants across the United States. The color indicates the price range and the size represents the average stars.
+
+Business Value: Identify business opportunities in places without pet-friendly restaurants, save time for potential customers with pets looking for a place to eat, and identify trends in the price range of these types of restaurants.
+
+Query:
+{"is_open": 1, "stars": {"$gt": 4},"categories": "Restaurants"}
+______________________________________
+
+Deborah:
+
+Insight: Highly-rated businesses (higher or equal to 4 stars) with few revies (less then 20)
+
+Business value: Identifies businesses that are well-rated, but might no yet have a significant number of reviews.
+They might have strong potentail for growth, if they get more Attention --> Recommendation to use more Social Media.
+
+Used: Comparison Operator
+
+Query:
+{"stars": {"$gte": 4}, "review_count": {"$lt": 20}}
+
+
+
+Insight: Find open businesses in a specific city (example: Santa Barbara) with high ratings.
+
+Business value: Identifies well-rated places, that are currently open. Customer saves time, he sees directly which places are currently available and highly-rated
+--> improves customer service and the customer's happiness.
+
+Used: Comparison Operator
+
+Query:
+{"is_open": 1, "city": "Santa Barbara", "stars": {"$gte": 4}}
+
+
+
+Insight: Find businesses that do not offer delivery or accept credit card payments.
+Business value: These businesses might miss out on potential customers --> Recommendation is to offer those Services to attract more customers.
+
+Used: Logical Operator
+
+Query:
+
+{"$nor": [
+  {"attributes.RestaurantsDelivery": "True"},
+  {"attributes.BusinessAcceptsCreditCards": "True"}]}
+
+
+
+Insight: Identify all doctors who are currently open and do not require an appointment.
+
+Business Value:Allows clients to directly see all available doctors, in particular for urgent care or walk-in's.
+
+Used: Array
+
+Query:
+{"categories": { "$in": ["Doctors"] },"is_open": 1,"attributes.ByAppointmentOnly": { "$ne": "True" }}
+
+
+
+Insight:Identify all hotels that offer free WiFi.
+
+Business Value:
+Since this is today very important for travelors (especially for business travelors), sometimes even a key requirement.
+Clients can directly choose their hotel based on that -> faster decision making for the Client & Hotels can use this for their promotion.
+
+Used: Array
+
+Query:
+{"categories": "Hotels", "attributes.WiFi": "u'free'" }
+
+
+
+Chart:
+Chart Type: Heatmap
+Title: Distributions of Doctors across US
+
+Insight: See the Distribution of all doctors across the united states of america.
+
+Business Value: healthcare providers who seek to expand can see where possibilities are (due to less competition in less established places).
+
+Query:
+[{
+    "$match": {
+      "categories": { "$in": ["Doctors"] }
+    }
+  }
+]
+
+
+
+Chart :
+Chart Type: Barchart
+Title: Average stars of Hotels in California (that offer free WIFI)
+
+Insight: Identify which city in California has Hotels which offer free WIFI and see the average stars per city.
+
+Business Value: Travelors interested in California State can check which city offers the Hotels with an higher average of stars. All Hotels offer free Wifi
+--> if hotel rating is more important than city you can use this to decide where to go.
+
+Query:
+{"categories": "Hotels", "attributes.WiFi": "u'free'" }
